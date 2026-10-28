@@ -151,19 +151,7 @@ async def analyze_video(req: dict):
         extracted_script = ""
         video_duration_secs = 60.0
         
-        ydl_opts_info = {
-            'quiet': True, 
-            'no_warnings': True,
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
-        }
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
-                info = ydl.extract_info(url, download=False)
-                video_title = info.get('title', video_title)
-                video_duration_secs = float(info.get('duration', 60.0))
-        except Exception as e:
-            print("Info extract error:", e)
-
+        # ตั้งค่าดึงซับไตเติลแบบเดิมที่คุณต้องการ
         sub_temp_prefix = os.path.join(TEMP_DIR, f"sub_{str(uuid.uuid4())[:8]}")
         ydl_opts_sub = {
             'skip_download': True,
@@ -173,11 +161,18 @@ async def analyze_video(req: dict):
             'outtmpl': sub_temp_prefix,
             'quiet': True,
             'no_warnings': True,
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web', 'mweb']
+                }
+            }
         }
+        
         try:
             with yt_dlp.YoutubeDL(ydl_opts_sub) as ydl:
-                ydl.download([url])
+                info = ydl.extract_info(url, download=True)
+                video_title = info.get('title', video_title)
+                video_duration_secs = float(info.get('duration', 60.0))
         except Exception as e:
             print("Subtitle download warning:", e)
 
@@ -196,22 +191,24 @@ async def analyze_video(req: dict):
             if parsed_text and len(parsed_text) > 10:
                 extracted_script = parsed_text
 
-        if not extracted_script or len(extracted_script) < 20:
-            try:
-                with yt_dlp.YoutubeDL({'quiet': True, 'extractor_args': {'youtube': {'player_client': ['android', 'web']}}}) as ydl:
-                    info = ydl.extract_info(url, download=False)
-                    description = info.get('description', '')
-                    if description and len(description) > 20:
-                        extracted_script = f"เนื้อหาจากวิดีโอ {video_title}: {description}"
-            except Exception:
-                pass
-
         for sf in sub_files:
             try: os.remove(sf)
             except: pass
 
+        # ถ้าระบบดึงซับไฟล์ตรงๆ ไม่ได้ ให้ดึง Description เป็นข้อมูลสำรองอัตโนมัติ
         if not extracted_script or len(extracted_script) < 10:
-            extracted_script = f"สรุปเนื้อหาสำคัญจากวิดีโอเรื่อง {video_title}"
+            try:
+                with yt_dlp.YoutubeDL({'quiet': True, 'extractor_args': {'youtube': {'player_client': ['android', 'web']}}}) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    video_title = info.get('title', video_title)
+                    video_duration_secs = float(info.get('duration', 60.0))
+                    description = info.get('description', '')
+                    if description and len(description) > 20:
+                        extracted_script = description
+                    else:
+                        extracted_script = f"สรุปเนื้อหาสำคัญจากวิดีโอเรื่อง {video_title}"
+            except Exception:
+                extracted_script = f"สรุปเนื้อหาสำคัญจากวิดีโอเรื่อง {video_title}"
 
         return {
             "status": "success",
