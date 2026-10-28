@@ -13,7 +13,7 @@ import yt_dlp
 import edge_tts
 from PIL import Image, ImageDraw, ImageFont
 
-app = FastAPI(title="ChiriwAi.Copy - Store Package System (Port 8005)")
+app = FastAPI(title="ChiriwAi.Copy - Store Package System (Port 7860)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,7 +86,6 @@ def login(req: AuthRequest):
         return {"status": "success", "username": req.username, "credits": user[0]}
     raise HTTPException(status_code=400, detail="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
 
-# API สำหรับแอดมินเพิ่มเครดิต
 @app.post("/api/admin/add-credits")
 def add_credits(req: ModifyCreditRequest):
     conn = sqlite3.connect('users.db')
@@ -103,7 +102,6 @@ def add_credits(req: ModifyCreditRequest):
     conn.close()
     return {"status": "success", "message": f"เติมเครดิตให้ {req.username} สำเร็จ! เครดิตรวม: {new_credits}", "credits": new_credits}
 
-# API สำหรับแอดมินลด/ลบเครดิต
 @app.post("/api/admin/remove-credits")
 def remove_credits(req: ModifyCreditRequest):
     conn = sqlite3.connect('users.db')
@@ -153,7 +151,11 @@ async def analyze_video(req: dict):
         extracted_script = ""
         video_duration_secs = 60.0
         
-        ydl_opts_info = {'quiet': True, 'no_warnings': True}
+        ydl_opts_info = {
+            'quiet': True, 
+            'no_warnings': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
+        }
         try:
             with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -171,6 +173,7 @@ async def analyze_video(req: dict):
             'outtmpl': sub_temp_prefix,
             'quiet': True,
             'no_warnings': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts_sub) as ydl:
@@ -195,7 +198,7 @@ async def analyze_video(req: dict):
 
         if not extracted_script or len(extracted_script) < 20:
             try:
-                with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+                with yt_dlp.YoutubeDL({'quiet': True, 'extractor_args': {'youtube': {'player_client': ['android', 'web']}}}) as ydl:
                     info = ydl.extract_info(url, download=False)
                     description = info.get('description', '')
                     if description and len(description) > 20:
@@ -227,7 +230,11 @@ async def extract_frames(req: dict):
         job_id = str(uuid.uuid4())[:8]
         temp_video = os.path.join(TEMP_DIR, f"extract_{job_id}.mp4")
         
-        ydl_opts = { 'outtmpl': temp_video, 'quiet': True }
+        ydl_opts = { 
+            'outtmpl': temp_video, 
+            'quiet': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             duration = float(info.get('duration', 60.0))
@@ -306,7 +313,7 @@ async def generate_custom_thumbnail(req: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- RENDER API ---
+# --- RENDER API WITH ROBUST TTS ---
 @app.post("/api/render")
 async def render_video(req: RenderRequest):
     conn = sqlite3.connect('users.db')
@@ -352,20 +359,52 @@ async def render_video(req: RenderRequest):
 
         script_content = req.script_text.strip() or "สรุปเนื้อหาสำคัญจากวิดีโอ"
 
+        chunk_size = 300
+        text_chunks = [script_content[i:i+chunk_size] for i in range(0, len(script_content), chunk_size)]
+
         audio_created = False
+        selected_voice = voices_to_test[0]
+
         for v_name in voices_to_test:
             try:
-                communicate = edge_tts.Communicate(script_content, v_name)
-                await communicate.save(tts_audio)
-                if os.path.exists(tts_audio) and os.path.getsize(tts_audio) > 1000:
-                    audio_created = True
-                    break
-            except Exception:
+                temp_chunk_files = []
+                success_all = True
+                for idx, chunk in enumerate(text_chunks):
+                    chunk_path = os.path.join(TEMP_DIR, f"chunk_{job_id}_{idx}.mp3")
+                    communicate = edge_tts.Communicate(chunk, v_name)
+                    await communicate.save(chunk_path)
+                    if os.path.exists(chunk_path) and os.path.getsize(chunk_path) > 200:
+                        temp_chunk_files.append(chunk_path)
+                    else:
+                        success_all = False
+                        break
+
+                if success_all and temp_chunk_files:
+                    list_file_path = os.path.join(TEMP_DIR, f"list_{job_id}.txt")
+                    with open(list_file_path, 'w', encoding='utf-8') as lf:
+                        for cf in temp_chunk_files:
+                            lf.write(f"file '{os.path.abspath(cf)}'\n")
+
+                    concat_cmd = ['ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', list_file_path, '-c', 'copy', tts_audio]
+                    subprocess.run(concat_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+                    for cf in temp_chunk_files:
+                        try: os.remove(cf)
+                        except: pass
+                    try: os.remove(list_file_path)
+                    except: pass
+
+                    if os.path.exists(tts_audio) and os.path.getsize(tts_audio) > 1000:
+                        audio_created = True
+                        selected_voice = v_name
+                        break
+            except Exception as e:
+                print("TTS Chunking error:", e)
                 continue
 
         if not audio_created:
             try:
-                fallback_comm = edge_tts.Communicate("กำลังสรุปเนื้อหาวิดีโอ", "th-TH-NiwatNeural")
+                fallback_comm = edge_tts.Communicate(script_content[:100], voices_to_test[0])
                 await fallback_comm.save(tts_audio)
                 audio_created = True
             except:
@@ -407,7 +446,7 @@ async def render_video(req: RenderRequest):
 
         return { 
             "status": "success", 
-            "message": "เรนเดอร์วิดีโอสำเร็จโดย ChiriwAi.Copy!", 
+            "message": "เรนเดอร์วิดีโอและเสียงพากย์สำเร็จโดย ChiriwAi.Copy!", 
             "video_url": f"/static/outputs/{final_video_name}" 
         }
     except Exception as e:
@@ -419,4 +458,4 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("apptest:app", host="0.0.0.0", port=8005, reload=True)
+    uvicorn.run("apptest:app", host="0.0.0.0", port=7860, reload=False)
