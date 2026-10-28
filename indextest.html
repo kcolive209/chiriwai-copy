@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChiriwAi.Copy - Smart Speed-Sync Engine 3.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.8);
+        }
+        .step-card { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .step-active {
+            background: rgba(99, 102, 241, 0.2) !important;
+            border-color: #6366f1 !important;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+        }
+        .step-completed {
+            background: rgba(16, 185, 129, 0.15) !important;
+            border-color: #10b981 !important;
+            color: #34d399 !important;
+        }
+        .frame-option { transition: all 0.2s; cursor: pointer; border: 3px solid transparent; }
+        .frame-option.selected { border-color: #06b6d4; transform: scale(1.03); box-shadow: 0 0 15px rgba(6, 182, 212, 0.6); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen py-6 px-4 flex items-center justify-center">
+
+    <!-- 1. AUTH GATEWAY: หน้าล็อกอิน -->
+    <div id="login_screen" class="max-w-md w-full glass-panel rounded-3xl p-8 shadow-2xl border border-indigo-500/20 space-y-6">
+        <div class="text-center space-y-2">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/40">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <h1 class="text-2xl font-black text-white tracking-wide">ChiriwAi.Copy</h1>
+            <p class="text-xs text-indigo-400 font-medium">เข้าสู่ระบบเพื่อใช้งาน Smart Video Production Suite</p>
+        </div>
+
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <label class="text-xs text-slate-300 font-medium">ชื่อผู้ใช้งาน (Username)</label>
+                <input type="text" id="login_username" placeholder="ระบุชื่อผู้ใช้ของคุณ" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs text-slate-300 font-medium">รหัสผ่าน (Password)</label>
+                <input type="password" id="login_password" placeholder="ระบุรหัสผ่านของคุณ" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <button onclick="handleLogin()" 
+                class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-xs flex items-center justify-center gap-2">
+                <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
+            </button>
+
+            <div class="text-center pt-2">
+                <span class="text-xs text-slate-400">ยังไม่มีบัญชีผู้ใช้งาน?</span>
+                <button onclick="switchScreen('register')" class="text-xs text-indigo-400 hover:underline font-semibold ml-1">สมัครสมาชิกใหม่</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. AUTH GATEWAY: หน้าสมัครสมาชิก -->
+    <div id="register_screen" class="hidden max-w-md w-full glass-panel rounded-3xl p-8 shadow-2xl border border-emerald-500/20 space-y-6">
+        <div class="text-center space-y-2">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white text-2xl shadow-lg shadow-emerald-500/40">
+                <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <h1 class="text-2xl font-black text-white tracking-wide">ChiriwAi.Copy</h1>
+            <p class="text-xs text-emerald-400 font-medium">สมัครสมาชิกใหม่เพื่อเริ่มต้นใช้งาน</p>
+        </div>
+
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <label class="text-xs text-slate-300 font-medium">กำหนดชื่อผู้ใช้งาน (Username)</label>
+                <input type="text" id="reg_username" placeholder="ตั้งชื่อผู้ใช้ของคุณ" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs text-slate-300 font-medium">กำหนดรหัสผ่าน (Password)</label>
+                <input type="password" id="reg_password" placeholder="อย่างน้อย 6 ตัวอักษรขึ้นไป" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs text-slate-300 font-medium">ยืนยันรหัสผ่านอีกครั้ง (Confirm Password)</label>
+                <input type="password" id="reg_confirm_password" placeholder="กรอกรหัสผ่านให้ตรงกันอีกครั้ง" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <button onclick="handleRegister()" 
+                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-600/30 text-xs flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check"></i> ยืนยันการสมัครสมาชิก
+            </button>
+
+            <div class="text-center pt-2">
+                <span class="text-xs text-slate-400">มีบัญชีผู้ใช้งานอยู่แล้ว?</span>
+                <button onclick="switchScreen('login')" class="text-xs text-indigo-400 hover:underline font-semibold ml-1">กลับไปหน้าเข้าสู่ระบบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. STORE / NO CREDIT SCREEN: หน้าเลือกซื้อแพ็กเกจ 300 เครดิต -->
+    <div id="no_credit_screen" class="hidden max-w-md w-full glass-panel rounded-3xl p-6 shadow-2xl border border-amber-500/30 text-center space-y-4">
+        <div class="bg-gradient-to-tr from-amber-600 to-orange-500 rounded-2xl p-5 text-white shadow-lg space-y-2 relative overflow-hidden">
+            <h2 class="text-xl font-black tracking-wide">ChiriwAi.Copy Store</h2>
+            <p class="text-xs font-semibold">ซื้อแพ็กเกจเปิดใช้งานโปรแกรม</p>
+            <p class="text-[11px] text-amber-100">ไอดีของคุณ: <b id="no_credit_user" class="text-white underline"></b></p>
+            <div class="text-xl font-black text-amber-300 pt-1">⚡ 300 เครดิต (💎) <span class="text-[10px] text-white font-normal">ปลดล็อกถาวร</span></div>
+        </div>
+
+        <div class="bg-slate-900/90 border border-slate-700 p-3.5 rounded-2xl space-y-2 text-left text-xs">
+            <p class="text-slate-300 font-bold"><i class="fa-solid fa-cart-shopping text-cyan-400 mr-1.5"></i> ติดต่อซื้อแพ็กเกจ ChiriwAi.Copy:</p>
+            <a href="https://discord.com/users/1275194649304236167" target="_blank" class="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold transition-all p-2 bg-slate-950 rounded-xl border border-slate-800">
+                <i class="fa-brands fa-discord text-base text-indigo-500 ml-1"></i> Discord แอดมิน: <span class="underline">ติดต่อซื้อผ่าน Discord</span>
+            </a>
+            <a href="https://www.tiktok.com/@chiriwai.copy" target="_blank" class="flex items-center gap-2 text-rose-400 hover:text-rose-300 font-semibold transition-all p-2 bg-slate-950 rounded-xl border border-slate-800">
+                <i class="fa-brands fa-tiktok text-base text-rose-500 ml-1"></i> TikTok: <span class="underline">ChiriwAi.Copy (@chiriwai.copy)</span>
+            </a>
+        </div>
+
+        <div class="pt-1 flex gap-3">
+            <button onclick="handleLogin()" class="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-rotate-right"></i> ตรวจสอบการซื้อ (เข้าสู่โปรแกรม)
+            </button>
+            <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium px-4 py-3 rounded-xl text-xs transition-all">
+                ออกจากระบบ
+            </button>
+        </div>
+    </div>
+
+    <!-- 4. MAIN APP WORKSPACE: หน้าโปรแกรมหลัก -->
+    <div id="main_app" class="hidden max-w-7xl mx-auto space-y-6 w-full">
+        
+        <header class="glass-panel rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between shadow-xl gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-black text-white tracking-wide">ChiriwAi.Copy Studio Pro</h1>
+                    <p class="text-[11px] text-indigo-400 font-medium">Smart Speed-Sync Engine 3.0</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 bg-slate-900/90 border border-slate-700 px-4 py-1.5 rounded-xl">
+                    <div class="text-xs">
+                        <span class="text-slate-400">ผู้ใช้:</span> <b id="display_user" class="text-indigo-400"></b> | 
+                        <span class="text-slate-400 ml-1">เครดิต:</span> <b id="display_credits" class="text-amber-400 text-sm">300</b> 💎
+                    </div>
+
+                    <!-- 👑 ปุ่มจัดการเครดิตสำหรับ ADMIN -->
+                    <button id="admin_topup_btn" onclick="openAdminModal()" class="hidden bg-amber-600 hover:bg-amber-500 text-white text-[11px] px-2.5 py-1 rounded-lg transition-all font-medium">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> จัดการเครดิต (Admin)
+                    </button>
+
+                    <button onclick="handleLogout()" class="bg-rose-600/80 hover:bg-rose-600 text-white text-[11px] px-2.5 py-1 rounded-lg transition-all">ออกจากระบบ</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- SPEED-SYNC BANNER -->
+        <div class="glass-panel rounded-2xl p-4 border-l-4 border-l-indigo-500 bg-gradient-to-r from-indigo-950/20 to-slate-900/40 flex gap-3 items-center">
+            <div class="text-indigo-400 text-lg"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+            <div class="text-xs text-slate-300 leading-relaxed">
+                <span class="font-bold text-white">ChiriwAi.Copy Speed-Sync System:</span> ปรับความเร็วเสียงพากย์ได้ตามต้องการ (0.8x - 2.5x) เร่งความเร็ววิดีโออัตโนมัติ ภาพและเสียงจบพร้อมกัน 100% (<span class="text-emerald-400 font-bold">เรนเดอร์ฟรีไม่หักเครดิตเพิ่ม</span>)
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <div class="lg:col-span-6 space-y-6">
+                
+                <div class="glass-panel rounded-2xl p-5 space-y-3 shadow-xl">
+                    <label class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-brands fa-youtube text-red-500 text-base"></i> ลิงก์คลิปวิดีโอต้นฉบับ (YouTube Link)
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="youtube_url" placeholder="https://www.youtube.com/watch?v=..." 
+                            class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="analyzeAndExtract()" id="analyze_btn" 
+                            class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-xs flex items-center gap-1.5 shrink-0">
+                            <i class="fa-solid fa-magnifying-glass"></i> วิเคราะห์ & ดึงฉาก
+                        </button>
+                    </div>
+
+                    <div id="video_meta" class="hidden p-2.5 bg-slate-900/80 border border-indigo-500/30 rounded-xl flex items-center justify-between text-[11px]">
+                        <span id="video_title_display" class="text-slate-300 truncate font-medium max-w-[65%]">กำลังดึงข้อมูล...</span>
+                        <span id="video_duration_display" class="bg-indigo-950 text-indigo-400 px-2.5 py-0.5 rounded-lg border border-indigo-800 font-bold">0 นาที</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 space-y-3 shadow-xl border border-cyan-500/30">
+                    <h2 class="text-xs font-bold text-cyan-400 border-b border-slate-800 pb-2.5 flex items-center gap-2">
+                        <i class="fa-solid fa-paintbrush"></i> ออกแบบหน้าปก (Thumbnail Studio)
+                    </h2>
+                    
+                    <label class="text-[11px] text-slate-300 font-medium block">เลือกฉากจากลิงก์วิดีโอ</label>
+                    <div id="frame_container" class="grid grid-cols-4 gap-2 text-center text-[10px] text-slate-500 py-2 bg-slate-900/60 rounded-xl border border-slate-800 p-2">
+                        <span class="col-span-4 py-3">กรอกลิงก์และกดวิเคราะห์ด้านบนก่อน</span>
+                    </div>
+                    <input type="hidden" id="selected_frame_path" value="">
+
+                    <div class="space-y-1 pt-1">
+                        <label class="text-[11px] text-slate-300 font-medium">ข้อความบรรทัดบน</label>
+                        <input type="text" id="thumb_top_text" placeholder="เช่น หนุ่มแหกคุก แอบอยู่ในห้าง..." 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[11px] text-slate-300 font-medium">ข้อความบรรทัดล่าง</label>
+                        <input type="text" id="thumb_bottom_text" placeholder="เช่น กินอยู่ฟรี ตลอด 24 ชั่วโมง" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-slate-400">สีตัวหนังสือ</label>
+                            <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700">
+                                <input type="color" id="thumb_text_color" value="#ffffff" class="w-6 h-6 rounded border-0 cursor-pointer bg-transparent">
+                                <span class="text-[11px] text-slate-300">สีขาว</span>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-slate-400">สีขอบตัด (Outline)</label>
+                            <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700">
+                                <input type="color" id="thumb_outline_color" value="#000000" class="w-6 h-6 rounded border-0 cursor-pointer bg-transparent">
+                                <span class="text-[11px] text-slate-300">สีดำ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="generateCustomThumbnail()" 
+                        class="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 text-white font-bold py-2.5 rounded-xl shadow-lg text-xs flex items-center justify-center gap-2 mt-1">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> สร้างและดูตัวอย่างภาพหน้าปก
+                    </button>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 space-y-5 shadow-xl">
+                    <h2 class="text-xs font-bold text-slate-300 border-b border-slate-800 pb-2.5">การตั้งค่ารูปแบบวิดีโอ & เสียงพากย์</h2>
+
+                    <div class="space-y-2">
+                        <label class="text-[11px] text-slate-400 font-medium">อัตราส่วนหน้าจอ (Aspect Ratio)</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" onclick="selectAspect('16:9')" id="opt_16_9"
+                                class="aspect-btn border-2 border-indigo-500 bg-indigo-950/40 text-indigo-300 p-3 rounded-xl flex items-center justify-center gap-2 text-xs font-medium">
+                                <i class="fa-solid fa-tv text-sm"></i> 16:9 แนวนอน
+                            </button>
+                            <button type="button" onclick="selectAspect('9:16')" id="opt_9_16"
+                                class="aspect-btn border-2 border-slate-800 bg-slate-900/50 text-slate-400 p-3 rounded-xl flex items-center justify-center gap-2 text-xs font-medium">
+                                <i class="fa-solid fa-mobile-screen-button text-sm"></i> 9:16 แนวตั้ง Shorts
+                            </button>
+                        </div>
+                        <input type="hidden" id="aspect_ratio" value="16:9">
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-[11px] text-slate-400 font-medium">เสียงพากย์ AI ภาษาไทย</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" onclick="selectVoice('male_deep')" id="voice_male"
+                                class="voice-btn border-2 border-indigo-500 bg-indigo-950/40 text-indigo-300 p-3 rounded-xl text-left">
+                                <div class="font-semibold text-xs flex items-center gap-1.5"><i class="fa-solid fa-user-astronaut"></i> นิวัฒน์ (ชาย)</div>
+                                <div class="text-[10px] text-indigo-400/80 mt-0.5">เสียงนุ่มทุ้ม สุขุม เป็นทางการ</div>
+                            </button>
+                            <button type="button" onclick="selectVoice('female_soft')" id="voice_female"
+                                class="voice-btn border-2 border-slate-800 bg-slate-900/50 text-slate-400 p-3 rounded-xl text-left">
+                                <div class="font-semibold text-xs flex items-center gap-1.5"><i class="fa-solid fa-user-nurse"></i> เปรมวดี (หญิง)</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">เสียงสดใส อ่อนหวาน ฟังเพลิน</div>
+                            </button>
+                        </div>
+                        <input type="hidden" id="voice_type" value="male_deep">
+                    </div>
+
+                    <div class="space-y-2 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800/80">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-300 font-medium"><i class="fa-solid fa-gauge-high text-indigo-400 mr-1"></i>ปรับความเร็วเสียงพากย์ & สปีดคลิป</span>
+                            <span id="speed_label" class="text-indigo-400 font-bold bg-indigo-950 px-2.5 py-0.5 rounded-md border border-indigo-800 text-xs">1.00x</span>
+                        </div>
+                        <input type="range" id="playback_speed" min="0.8" max="2.5" step="0.05" value="1.0" oninput="updateSpeed(this.value)"
+                            class="w-full accent-indigo-500 cursor-pointer custom-slider">
+                        <div class="flex justify-between text-[10px] text-slate-500 px-0.5">
+                            <span>0.8x ช้า</span><span>1.0x ปกติ</span><span>1.5x เร็ว</span><span>2.0x เร็วมาก</span><span>2.5x ด่วน</span>
+                        </div>
+                    </div>
+                    <input type="hidden" id="duration_mins" value="1">
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-6 space-y-6">
+                
+                <div class="glass-panel rounded-2xl p-5 space-y-3 shadow-xl">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines text-purple-400"></i> บทสคริปต์บรรยายเสียง (Script Editor)
+                        </label>
+                        <span id="char_count_display" class="text-[11px] text-slate-400">ความยาว 0 ตัวอักษร (สูงสุด 1,000,000)</span>
+                    </div>
+
+                    <textarea id="script_text" rows="7" maxlength="1000000" oninput="updateCharCount(this.value)" placeholder="สคริปต์จากการวิเคราะห์จะปรากฏที่นี่... หรือพิมพ์แก้ไขบทบรรยายได้สูงสุด 1 ล้านตัวอักษร"
+                        class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed shadow-inner"></textarea>
+
+                    <button onclick="renderVideo()" id="render_btn" 
+                        class="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-clapperboard"></i> เรนเดอร์วิดีโอ + เสียงพากย์ (ฟรีไม่หักเครดิต)
+                    </button>
+                </div>
+
+                <div id="progress_box" class="hidden glass-panel rounded-2xl p-4 space-y-2.5 shadow-xl border border-indigo-500/30">
+                    <div class="flex justify-between text-xs font-medium">
+                        <span id="progress_status" class="text-amber-400 animate-pulse"><i class="fa-solid fa-gear fa-spin mr-1"></i> กำลังประมวลผลเรนเดอร์...</span>
+                        <span id="progress_percent" class="text-cyan-400 font-bold">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                        <div id="progress_fill" class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 space-y-4 shadow-xl">
+                    <label class="text-xs font-semibold text-slate-300 block border-b border-slate-800 pb-2.5">สถานะการประมวลผล & วิดีโอผลลัพธ์</label>
+                    
+                    <div class="grid grid-cols-4 gap-2 text-center text-[10px]">
+                        <div id="step_1" class="step-card bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center justify-center gap-1">
+                            <i id="step_icon_1" class="fa-solid fa-magnifying-glass text-indigo-400 text-sm"></i> <span class="text-slate-300">1. วิเคราะห์</span>
+                        </div>
+                        <div id="step_2" class="step-card bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center justify-center gap-1">
+                            <i id="step_icon_2" class="fa-solid fa-microphone text-indigo-400 text-sm"></i> <span class="text-slate-300">2. สร้างเสียง</span>
+                        </div>
+                        <div id="step_3" class="step-card bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center justify-center gap-1">
+                            <i id="step_icon_3" class="fa-solid fa-video text-indigo-400 text-sm"></i> <span class="text-slate-300">3. ตัดต่อวิดีโอ</span>
+                        </div>
+                        <div id="step_4" class="step-card bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex flex-col items-center justify-center gap-1">
+                            <i id="step_icon_4" class="fa-solid fa-circle-check text-slate-600 text-sm"></i> <span class="text-slate-300">4. สำเร็จ</span>
+                        </div>
+                    </div>
+
+                    <div id="result_box" class="hidden space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i> วิดีโอพร้อมใช้งานแล้ว!</span>
+                            <a id="download_link" href="#" target="_blank" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-md">
+                                <i class="fa-solid fa-download mr-1"></i> ดาวน์โหลดวิดีโอ
+                            </a>
+                        </div>
+                        <video id="output_video" controls class="w-full max-h-[220px] rounded-xl shadow-lg border border-slate-800 bg-black"></video>
+                    </div>
+
+                    <div id="thumb_box" class="hidden pt-3 border-t border-slate-800 space-y-2">
+                        <span class="text-xs text-cyan-400 font-medium"><i class="fa-solid fa-image"></i> รูปหน้าปกคลิป (Thumbnail):</span>
+                        <img id="thumb_img" src="" class="w-full max-h-[150px] object-cover rounded-xl border border-slate-800 shadow-lg">
+                        <a id="download_thumb" href="#" target="_blank" class="inline-block text-[11px] text-cyan-400 hover:underline">
+                            <i class="fa-solid fa-download mr-1"></i> ดาวน์โหลดรูปหน้าปกขนาดเต็ม
+                        </a>
+                    </div>
+
+                    <div id="placeholder_result" class="text-center py-6 text-slate-500 text-xs">
+                        ยังไม่มีวิดีโอที่เรนเดอร์<br>กรอกลิงก์ด้านบนแล้วกดปุ่มเรนเดอร์เพื่อเริ่มสร้างวิดีโอใหม่
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- 6. ADMIN MODAL: หน้าต่างแอดมิน เพิ่ม/ลด เครดิตลูกค้า -->
+    <div id="admin_modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-shield-halved text-amber-400"></i> แอดมิน ChiriwAi.Copy</h3>
+                <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+
+            <div class="space-y-3 text-left">
+                <div class="space-y-1">
+                    <label class="text-[11px] text-slate-300 font-medium">ชื่อ Username ลูกค้า:</label>
+                    <input type="text" id="admin_target_user" placeholder="ระบุชื่อยูสเซอร์ลูกค้า" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] text-slate-300 font-medium">จำนวนเครดิต (เช่น 300 หรือจำนวนที่ต้องการลบ):</label>
+                    <input type="number" id="admin_credit_amount" value="300" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+            </div>
+
+            <div class="pt-2 space-y-2">
+                <button onclick="adminModifyCredits('add')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-plus"></i> เติมเครดิต (เพิ่ม)
+                </button>
+                <button onclick="adminModifyCredits('remove')" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-minus"></i> ลบเครดิต (หักออก)
+                </button>
+                <button onclick="closeAdminModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs transition-all">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        let currentUser = null;
+        let currentCredits = 0;
+
+        function switchScreen(screenName) {
+            document.getElementById('login_screen').classList.add('hidden');
+            document.getElementById('register_screen').classList.add('hidden');
+            document.getElementById('no_credit_screen').classList.add('hidden');
+
+            if (screenName === 'register') {
+                document.getElementById('register_screen').classList.remove('hidden');
+            } else if (screenName === 'no_credit') {
+                document.getElementById('no_credit_screen').classList.remove('hidden');
+            } else {
+                document.getElementById('login_screen').classList.remove('hidden');
+            }
+        }
+
+        function openAdminModal() {
+            document.getElementById('admin_modal').classList.remove('hidden');
+        }
+        function closeAdminModal() {
+            document.getElementById('admin_modal').classList.add('hidden');
+        }
+
+        async function adminModifyCredits(actionType) {
+            const targetUser = document.getElementById('admin_target_user').value.trim();
+            const amount = parseInt(document.getElementById('admin_credit_amount').value) || 0;
+
+            if (!targetUser || amount <= 0) {
+                alert('กรุณากรอกชื่อลูกค้าและจำนวนเครดิตให้ถูกต้อง');
+                return;
+            }
+
+            const endpoint = actionType === 'add' ? '/api/admin/add-credits' : '/api/admin/remove-credits';
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: targetUser, amount: amount })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`✅ ${data.message}`);
+                    document.getElementById('admin_target_user').value = '';
+                    closeAdminModal();
+                } else {
+                    alert('❌ ' + (data.detail || 'ไม่พบชื่อผู้ใช้งานนี้ในระบบ'));
+                }
+            } catch (e) {
+                alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            }
+        }
+
+        async function handleRegister() {
+            const username = document.getElementById('reg_username').value.trim();
+            const password = document.getElementById('reg_password').value.trim();
+            const confirmPassword = document.getElementById('reg_confirm_password').value.trim();
+
+            if (!username || !password || !confirmPassword) {
+                alert('กรุณากรอกข้อมูลให้ครบทุกช่องครับ');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                alert('❌ รหัสผ่านทั้งสองครั้งไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    switchScreen('login');
+                    document.getElementById('login_username').value = username;
+                } else {
+                    alert(data.detail || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
+                }
+            } catch (e) {
+                alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            }
+        }
+
+        async function handleLogin() {
+            const username = document.getElementById('login_username').value.trim() || currentUser;
+            const password = document.getElementById('login_password').value.trim();
+
+            if (!username) {
+                alert('กรุณากรอก Username และ Password ครับ');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password: password || "CHECK_SESSION" })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    currentUser = data.username;
+                    currentCredits = data.credits;
+
+                    document.getElementById('display_user').innerText = currentUser;
+                    document.getElementById('display_credits').innerText = currentCredits;
+                    document.getElementById('no_credit_user').innerText = currentUser;
+
+                    if (currentUser === 'adminchiriw') {
+                        document.getElementById('admin_topup_btn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('admin_topup_btn').classList.add('hidden');
+                    }
+
+                    document.getElementById('login_screen').classList.add('hidden');
+
+                    if (currentCredits < 300 && currentUser !== 'adminchiriw') {
+                        switchScreen('no_credit');
+                        document.body.classList.add('flex', 'items-center', 'justify-center');
+                        document.body.classList.remove('py-6', 'px-4');
+                    } else {
+                        document.getElementById('no_credit_screen').classList.add('hidden');
+                        document.getElementById('main_app').classList.remove('hidden');
+                        document.body.classList.remove('flex', 'items-center', 'justify-center');
+                        document.body.classList.add('py-6', 'px-4');
+                    }
+                } else {
+                    alert(data.detail || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                }
+            } catch (e) {
+                alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            currentCredits = 0;
+            document.getElementById('main_app').classList.add('hidden');
+            document.getElementById('no_credit_screen').classList.add('hidden');
+            document.getElementById('login_screen').classList.remove('hidden');
+            document.body.classList.add('flex', 'items-center', 'justify-center');
+            document.body.classList.remove('py-6', 'px-4');
+            document.getElementById('login_username').value = '';
+            document.getElementById('login_password').value = '';
+            alert('ออกจากระบบเรียบร้อยแล้ว');
+        }
+
+        function updateCharCount(text) {
+            document.getElementById('char_count_display').innerText = 'ความยาว ' + text.length.toLocaleString() + ' ตัวอักษร (สูงสุด 1,000,000)';
+        }
+
+        function updateSpeed(val) {
+            document.getElementById('speed_label').innerText = parseFloat(val).toFixed(2) + 'x';
+        }
+
+        function setStepState(stepNumber, state) {
+            const el = document.getElementById('step_' + stepNumber);
+            const icon = document.getElementById('step_icon_' + stepNumber);
+            if(!el || !icon) return;
+            if (state === 'active') {
+                el.className = "step-card step-active border p-2.5 rounded-xl flex flex-col items-center justify-center gap-1";
+                icon.className = "fa-solid fa-gear fa-spin text-indigo-400 text-sm";
+            } else if (state === 'completed') {
+                el.className = "step-card step-completed border p-2.5 rounded-xl flex flex-col items-center justify-center gap-1";
+                icon.className = "fa-solid fa-circle-check text-emerald-400 text-sm";
+            } else {
+                el.className = "step-card bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl flex flex-col items-center justify-center gap-1";
+            }
+        }
+
+        function resetSteps() { for(let i=1; i<=4; i++) setStepState(i, 'default'); }
+
+        function selectAspect(ratio) {
+            document.getElementById('aspect_ratio').value = ratio;
+            document.getElementById('opt_16_9').className = ratio === '16:9' ? "aspect-btn border-2 border-indigo-500 bg-indigo-950/40 text-indigo-300 p-3 rounded-xl flex items-center justify-center gap-2 text-xs font-medium" : "aspect-btn border-2 border-slate-800 bg-slate-900/50 text-slate-400 p-3 rounded-xl flex items-center justify-center gap-2 text-xs font-medium";
+            document.getElementById('opt_9_16').className = ratio === '9:16' ? "aspect-btn border-2 border-indigo-500 bg-indigo-950/40 text-indigo-300 p-3 rounded-xl flex items-center justify-center gap-2 text-xs font-medium" : "aspect-btn border-2 border-slate-800 bg-slate-900/50 text-slate-400 p-3 rounded-xl flex items-center justify-center gap-2 text-xs font-medium";
+        }
+
+        function selectVoice(type) {
+            document.getElementById('voice_type').value = type;
+            document.getElementById('voice_male').className = type === 'male_deep' ? "voice-btn border-2 border-indigo-500 bg-indigo-950/40 text-indigo-300 p-3 rounded-xl text-left" : "voice-btn border-2 border-slate-800 bg-slate-900/50 text-slate-400 p-3 rounded-xl text-left";
+            document.getElementById('voice_female').className = type === 'female_soft' ? "voice-btn border-2 border-indigo-500 bg-indigo-950/40 text-indigo-300 p-3 rounded-xl text-left" : "voice-btn border-2 border-slate-800 bg-slate-900/50 text-slate-400 p-3 rounded-xl text-left";
+        }
+
+        async function analyzeAndExtract() {
+            const url = document.getElementById('youtube_url').value.trim();
+            if (!url) { alert('กรุณากรอกลิงก์ YouTube ก่อนครับ'); return; }
+
+            resetSteps();
+            setStepState(1, 'active');
+
+            const metaBox = document.getElementById('video_meta');
+            metaBox.classList.remove('hidden');
+            document.getElementById('video_title_display').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังวิเคราะห์ & สกัดฉาก...';
+
+            try {
+                const res1 = fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, duration_mins: 1 })
+                }).then(r => r.json());
+
+                const res2 = fetch('/api/extract-frames', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                }).then(r => r.json());
+
+                const [data1, data2] = await Promise.all([res1, res2]);
+
+                document.getElementById('script_text').value = data1.script;
+                updateCharCount(data1.script);
+                document.getElementById('video_title_display').innerText = data1.title;
+                document.getElementById('video_duration_display').innerText = Math.round(data1.duration_secs / 60) + ' นาที';
+                setStepState(1, 'completed');
+
+                const frameContainer = document.getElementById('frame_container');
+                frameContainer.innerHTML = '';
+                if (data2.frames && data2.frames.length > 0) {
+                    data2.frames.forEach((frameUrl, idx) => {
+                        const imgElem = document.createElement('img');
+                        imgElem.src = frameUrl;
+                        imgElem.className = "frame-option rounded-lg h-14 w-full object-cover";
+                        imgElem.onclick = () => selectFrame(frameUrl, imgElem);
+                        frameContainer.appendChild(imgElem);
+                        if (idx === 0) selectFrame(frameUrl, imgElem);
+                    });
+                } else {
+                    frameContainer.innerHTML = '<span class="col-span-4 text-slate-400 text-xs py-2">ไม่สามารถดึงภาพฉากได้</span>';
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาด ตรวจสอบลิงก์ YouTube อีกครั้ง');
+                metaBox.classList.add('hidden');
+                resetSteps();
+            }
+        }
+
+        function selectFrame(url, element) {
+            document.querySelectorAll('.frame-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('selected_frame_path').value = url;
+        }
+
+        async function generateCustomThumbnail() {
+            const framePath = document.getElementById('selected_frame_path').value;
+            if (!framePath) { alert('กรุณากดวิเคราะห์และเลือกฉากจากลิงก์ก่อนครับ'); return; }
+
+            try {
+                const response = await fetch('/api/generate-custom-thumbnail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        frame_path: framePath,
+                        top_text: document.getElementById('thumb_top_text').value,
+                        bottom_text: document.getElementById('thumb_bottom_text').value,
+                        text_color: document.getElementById('thumb_text_color').value,
+                        outline_color: document.getElementById('thumb_outline_color').value
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('thumb_box').classList.remove('hidden');
+                    document.getElementById('thumb_img').src = data.thumbnail_url;
+                    document.getElementById('download_thumb').href = data.thumbnail_url;
+                } else {
+                    alert('สร้างภาพปกไม่สำเร็จ');
+                }
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการสร้างภาพปก');
+            }
+        }
+
+        async function renderVideo() {
+            if (!currentUser) {
+                alert('⚠️ กรุณาเข้าสู่ระบบก่อนกดเรนเดอร์วิดีโอ!');
+                return;
+            }
+
+            const url = document.getElementById('youtube_url').value.trim();
+            if (!url) { alert('กรุณากรอกลิงก์ YouTube ครับ'); return; }
+
+            const progressBox = document.getElementById('progress_box');
+            const progressStatus = document.getElementById('progress_status');
+            const progressPercent = document.getElementById('progress_percent');
+            const progressFill = document.getElementById('progress_fill');
+            const resultBox = document.getElementById('result_box');
+            const placeholderResult = document.getElementById('placeholder_result');
+
+            progressBox.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+            placeholderResult.classList.add('hidden');
+
+            setStepState(2, 'active');
+            let percent = 10;
+            let interval = setInterval(() => {
+                if (percent < 90) {
+                    percent += Math.floor(Math.random() * 5) + 3;
+                    progressPercent.innerText = percent + '%';
+                    progressFill.style.width = percent + '%';
+                    if (percent > 40) {
+                        setStepState(2, 'completed');
+                        setStepState(3, 'active');
+                        progressStatus.innerHTML = '<i class="fa-solid fa-compact-disc fa-spin mr-1"></i> กำลังตัดต่อวิดีโอและซิงค์สปีด...';
+                    }
+                }
+            }, 800);
+
+            try {
+                const response = await fetch('/api/render', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: currentUser,
+                        url: url,
+                        duration_mins: parseInt(document.getElementById('duration_mins').value) || 1,
+                        script_text: document.getElementById('script_text').value,
+                        aspect_ratio: document.getElementById('aspect_ratio').value,
+                        voice_type: document.getElementById('voice_type').value,
+                        playback_speed: parseFloat(document.getElementById('playback_speed').value)
+                    })
+                });
+
+                clearInterval(interval);
+                const data = await response.json();
+
+                if (response.ok) {
+                    progressPercent.innerText = '100%';
+                    progressFill.style.width = '100%';
+                    progressStatus.innerHTML = '<i class="fa-solid fa-check text-emerald-400 mr-1"></i> เรนเดอร์เสร็จสมบูรณ์!';
+                    setStepState(3, 'completed');
+                    setStepState(4, 'completed');
+
+                    alert(data.message);
+
+                    setTimeout(() => {
+                        progressBox.classList.add('hidden');
+                        resultBox.classList.remove('hidden');
+                        document.getElementById('output_video').src = data.video_url;
+                        document.getElementById('download_link').href = data.video_url;
+                        document.getElementById('output_video').load();
+                    }, 500);
+                } else {
+                    alert('Error: ' + data.detail);
+                    progressBox.classList.add('hidden');
+                    placeholderResult.classList.remove('hidden');
+                    resetSteps();
+                    if (data.detail && data.detail.includes('ซื้อแพ็กเกจ')) {
+                        handleLogin();
+                    }
+                }
+            } catch (err) {
+                clearInterval(interval);
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                progressBox.classList.add('hidden');
+                placeholderResult.classList.remove('hidden');
+                resetSteps();
+            }
+        }
+    </script>
+</body>
+</html>
